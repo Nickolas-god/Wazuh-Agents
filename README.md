@@ -39,6 +39,8 @@ Ao rodar os scripts deste repositório em um endpoint Windows, ele fica com:
 
 ## 📦 Conteúdo
 
+### Windows
+
 | Arquivo | Pasta | Para que serve |
 |---|---|---|
 | `sysmonconfig-full.xml` | `configs/` | Config do Sysmon (base [SwiftOnSecurity](https://github.com/SwiftOnSecurity/sysmon-config)) com `ProcessAccess` e `ImageLoad` habilitados |
@@ -46,19 +48,34 @@ Ao rodar os scripts deste repositório em um endpoint Windows, ele fica com:
 | `deploy-s3-agent.ps1` | `scripts/` | Instala tudo baixando os instaladores da internet |
 | `deploy-s3-agent-smb.ps1` | `scripts/` | Mesma coisa, mas puxando de um compartilhamento SMB (redes sem internet) |
 
+### Linux
+
+| Arquivo | Pasta | Para que serve |
+|---|---|---|
+| `audit.rules` | `configs/` | Regras do `auditd` (base [socfortress/Wazuh-Rules](https://github.com/socfortress/Wazuh-Rules)) mapeadas com MITRE ATT&CK — equivalente ao papel do Sysmon no Windows |
+| `ossec-agent-linux.conf` | `configs/` | Config do agente Wazuh: FIM com `whodata`, coleta do auditd/auth.log, SCA (CIS Benchmarks) |
+| `deploy-s3-agent-linux.sh` | `scripts/` | Instala auditd + agente Wazuh (detecta apt/dnf/yum automaticamente) e aplica as duas configs |
+
 ---
 
 ## ⚙️ Antes de usar
 
 > [!IMPORTANT]
-> Preencha estas duas variáveis no topo de **cada** script `.ps1` antes de rodar:
+> Preencha estas duas variáveis no topo de **cada** script antes de rodar:
 
+**Windows** (`.ps1`):
 ```powershell
 $WazuhManagerIP   = "IP_DO_SEU_MANAGER"
 $WazuhAgentGroup  = "windows-endpoints"
 ```
 
-No script SMB, preencha também `$SharePath` com o caminho do compartilhamento de rede.
+**Linux** (`.sh`):
+```bash
+WAZUH_MANAGER_IP="IP_DO_SEU_MANAGER"
+WAZUH_AGENT_GROUP="linux-endpoints"
+```
+
+No script SMB (Windows), preencha também `$SharePath` com o caminho do compartilhamento de rede.
 
 > [!NOTE]
 > Os arquivos em `configs/` **não precisam ser editados manualmente** — os scripts substituem o placeholder de IP automaticamente ao aplicar a configuração.
@@ -67,16 +84,24 @@ No script SMB, preencha também `$SharePath` com o caminho do compartilhamento d
 
 ## 🚀 Instalação rápida (uma máquina)
 
+**Windows** — como Administrador, dentro da pasta `scripts/`:
 ```powershell
-# Como Administrador, dentro da pasta scripts/
 .\deploy-s3-agent.ps1
 ```
 
-O script:
-1. Instala o Sysmon com a config completa
-2. Instala o agente Wazuh apontando pro Manager e grupo configurados
-3. Substitui o `ossec.conf` padrão pelo `ossec-agent-windows.conf` completo
-4. Inicia o serviço e valida que subiu corretamente
+**Linux** — como root, dentro da pasta `scripts/`:
+```bash
+sudo ./deploy-s3-agent-linux.sh
+```
+
+Os dois scripts seguem a mesma lógica:
+1. Instalam a peça de coleta avançada (Sysmon no Windows / auditd no Linux) com a config completa
+2. Instalam o agente Wazuh apontando pro Manager e grupo configurados
+3. Substituem o `ossec.conf` padrão pela config completa do repositório
+4. Iniciam o serviço e validam que subiu corretamente
+
+> [!NOTE]
+> O script Linux detecta automaticamente o gerenciador de pacotes (`apt`, `dnf` ou `yum`) — funciona em Debian/Ubuntu e RHEL/CentOS/Fedora sem precisar de ajuste manual.
 
 ---
 
@@ -119,10 +144,13 @@ Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração a
 ├── README.md
 ├── configs/
 │   ├── sysmonconfig-full.xml
-│   └── ossec-agent-windows.conf
+│   ├── ossec-agent-windows.conf
+│   ├── audit.rules
+│   └── ossec-agent-linux.conf
 └── scripts/
     ├── deploy-s3-agent.ps1
-    └── deploy-s3-agent-smb.ps1
+    ├── deploy-s3-agent-smb.ps1
+    └── deploy-s3-agent-linux.sh
 ```
 
 ---
@@ -131,6 +159,7 @@ Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração a
 
 - [Wazuh Documentation](https://documentation.wazuh.com)
 - [SwiftOnSecurity/sysmon-config](https://github.com/SwiftOnSecurity/sysmon-config)
+- [socfortress/Wazuh-Rules](https://github.com/socfortress/Wazuh-Rules)
 - [MITRE ATT&CK](https://attack.mitre.org)
 
 ---
