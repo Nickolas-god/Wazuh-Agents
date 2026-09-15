@@ -1,19 +1,57 @@
-# Wazuh Agent + Sysmon — Deploy Windows
+<div align="center">
 
-Pacote de configuração e automação para implantar o agente Wazuh e o Sysmon em endpoints Windows, com detecção alinhada ao MITRE ATT&CK.
+# 🛡️ Wazuh Agent + Sysmon — Deploy Windows
 
-## O que tem aqui
+**Configuração e automação para implantar detecção alinhada ao MITRE ATT&CK em endpoints Windows**
+
+![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)
+![Wazuh](https://img.shields.io/badge/Wazuh-4.9-3AAFCB?logo=wazuh&logoColor=white)
+![Sysmon](https://img.shields.io/badge/Sysmon-v13%2B-333333?logo=windows-terminal&logoColor=white)
+![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+</div>
+
+---
+
+## 📋 Sumário
+
+- [O que este pacote faz](#-o-que-este-pacote-faz)
+- [Conteúdo](#-conteúdo)
+- [Antes de usar](#️-antes-de-usar)
+- [Instalação rápida](#-instalação-rápida-uma-máquina)
+- [Instalação em massa](#-instalação-em-massa)
+- [Configuração centralizada](#-configuração-centralizada-recomendado)
+- [Estrutura de pastas](#-estrutura-de-pastas)
+- [Referências](#-referências)
+
+---
+
+## 🎯 O que este pacote faz
+
+Ao rodar os scripts deste repositório em um endpoint Windows, ele fica com:
+
+- ✅ **Sysmon** instalado e configurado para detectar dump de credencial (`T1003`), DLL sideloading (`T1574.002`), persistência via registro, pipes de ferramentas de C2 e muito mais
+- ✅ **Agente Wazuh** instalado, com FIM em tempo real, coleta de PowerShell Script Block, logs do Sysmon/Defender/Task Scheduler já integrados
+- ✅ Tudo já **enviando eventos para o Wazuh Manager** da empresa/cliente, sem etapas manuais adicionais
+
+---
+
+## 📦 Conteúdo
 
 | Arquivo | Pasta | Para que serve |
 |---|---|---|
-| `sysmonconfig-full.xml` | `configs/` | Configuração do Sysmon (base [SwiftOnSecurity](https://github.com/SwiftOnSecurity/sysmon-config)), com `ProcessAccess` e `ImageLoad` habilitados para detectar dump de credencial (T1003) e DLL sideloading (T1574.002). |
-| `ossec-agent-windows.conf` | `configs/` | Configuração do agente Wazuh para Windows: FIM em tempo real, coleta de PowerShell Script Block, Sysmon, Windows Defender, Task Scheduler e monitoramento de registro reforçado. |
-| `deploy-s3-agent.ps1` | `scripts/` | Instala Sysmon + Wazuh Agent baixando os instaladores da internet, e já aplica as duas configs completas acima. |
-| `deploy-s3-agent-smb.ps1` | `scripts/` | Mesma função, mas busca os instaladores e configs em um compartilhamento SMB — para redes sem saída à internet. |
+| `sysmonconfig-full.xml` | `configs/` | Config do Sysmon (base [SwiftOnSecurity](https://github.com/SwiftOnSecurity/sysmon-config)) com `ProcessAccess` e `ImageLoad` habilitados |
+| `ossec-agent-windows.conf` | `configs/` | Config do agente Wazuh: FIM em tempo real, PowerShell, Sysmon, Defender, Task Scheduler, registro reforçado |
+| `deploy-s3-agent.ps1` | `scripts/` | Instala tudo baixando os instaladores da internet |
+| `deploy-s3-agent-smb.ps1` | `scripts/` | Mesma coisa, mas puxando de um compartilhamento SMB (redes sem internet) |
 
-## Antes de usar
+---
 
-Preencha nas duas primeiras linhas de cada script `.ps1`:
+## ⚙️ Antes de usar
+
+> [!IMPORTANT]
+> Preencha estas duas variáveis no topo de **cada** script `.ps1` antes de rodar:
 
 ```powershell
 $WazuhManagerIP   = "IP_DO_SEU_MANAGER"
@@ -22,24 +60,41 @@ $WazuhAgentGroup  = "windows-endpoints"
 
 No script SMB, preencha também `$SharePath` com o caminho do compartilhamento de rede.
 
-Os arquivos em `configs/` **não precisam ser editados manualmente** — os scripts substituem o placeholder de IP automaticamente ao aplicar a configuração.
+> [!NOTE]
+> Os arquivos em `configs/` **não precisam ser editados manualmente** — os scripts substituem o placeholder de IP automaticamente ao aplicar a configuração.
 
-## Instalação rápida (uma máquina)
+---
+
+## 🚀 Instalação rápida (uma máquina)
 
 ```powershell
-# Como Administrador, na pasta scripts/
+# Como Administrador, dentro da pasta scripts/
 .\deploy-s3-agent.ps1
 ```
 
-Isso instala o Sysmon com a config completa, instala o agente Wazuh, substitui o `ossec.conf` padrão pelo `ossec-agent-windows.conf` completo (com o IP já preenchido), e inicia o serviço.
+O script:
+1. Instala o Sysmon com a config completa
+2. Instala o agente Wazuh apontando pro Manager e grupo configurados
+3. Substitui o `ossec.conf` padrão pelo `ossec-agent-windows.conf` completo
+4. Inicia o serviço e valida que subiu corretamente
 
-## Instalação em massa
+---
 
-- **PowerShell Remoting**: `Invoke-Command -ComputerName (Get-Content maquinas.txt) -FilePath .\deploy-s3-agent.ps1`
-- **PsExec**: funciona em domínio ou workgroup, sem precisar de WinRM habilitado.
-- **SMB + `deploy-s3-agent-smb.ps1`**: quando a rede do cliente não tem saída para internet.
+## 🖧 Instalação em massa
 
-## Configuração centralizada (recomendado para múltiplos endpoints)
+| Método | Quando usar |
+|---|---|
+| **PowerShell Remoting** (`Invoke-Command`) | Máquinas com WinRM habilitado |
+| **PsExec** | Domínio ou workgroup, sem precisar de WinRM |
+| **SMB** (`deploy-s3-agent-smb.ps1`) | Rede do cliente sem saída para internet |
+
+```powershell
+Invoke-Command -ComputerName (Get-Content maquinas.txt) -FilePath .\deploy-s3-agent.ps1
+```
+
+---
+
+## 🗂️ Configuração centralizada (recomendado)
 
 Em vez de depender só do script, crie um grupo de agentes no Wazuh Manager:
 
@@ -47,15 +102,17 @@ Em vez de depender só do script, crie um grupo de agentes no Wazuh Manager:
 sudo /var/ossec/bin/agent_groups -a -g windows-endpoints
 ```
 
-E cole o conteúdo de `ossec-agent-windows.conf` (exceto a seção `<client>`) em:
+Cole o conteúdo de `ossec-agent-windows.conf` (exceto a seção `<client>`) em:
 
 ```
 /var/ossec/etc/shared/windows-endpoints/agent.conf
 ```
 
-Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração automaticamente.
+Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração automaticamente — sem depender do script pra isso.
 
-## Estrutura de pastas
+---
+
+## 🌳 Estrutura de pastas
 
 ```
 .
@@ -68,8 +125,18 @@ Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração a
     └── deploy-s3-agent-smb.ps1
 ```
 
-## Referências
+---
+
+## 📚 Referências
 
 - [Wazuh Documentation](https://documentation.wazuh.com)
 - [SwiftOnSecurity/sysmon-config](https://github.com/SwiftOnSecurity/sysmon-config)
 - [MITRE ATT&CK](https://attack.mitre.org)
+
+---
+
+<div align="center">
+
+*Mantido pela equipe de segurança para uso interno em implantações de clientes.*
+
+</div>
