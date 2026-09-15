@@ -1,12 +1,13 @@
 <div align="center">
 
-# 🛡️ Wazuh Agent + Sysmon — Deploy Windows
+# 🛡️ Wazuh Agent Deploy — Windows + Linux
 
-**Configuração e automação para implantar detecção alinhada ao MITRE ATT&CK em endpoints Windows**
+**Configuração e automação para implantar detecção alinhada ao MITRE ATT&CK em endpoints Windows e Linux**
 
-![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-0078D6?logo=windows&logoColor=white)
 ![Wazuh](https://img.shields.io/badge/Wazuh-4.9-3AAFCB?logo=wazuh&logoColor=white)
 ![Sysmon](https://img.shields.io/badge/Sysmon-v13%2B-333333?logo=windows-terminal&logoColor=white)
+![auditd](https://img.shields.io/badge/auditd-Linux-FCC624?logo=linux&logoColor=black)
 ![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -29,10 +30,16 @@
 
 ## 🎯 O que este pacote faz
 
-Ao rodar os scripts deste repositório em um endpoint Windows, ele fica com:
+Ao rodar os scripts deste repositório em um endpoint, ele fica com:
 
-- ✅ **Sysmon** instalado e configurado para detectar dump de credencial (`T1003`), DLL sideloading (`T1574.002`), persistência via registro, pipes de ferramentas de C2 e muito mais
-- ✅ **Agente Wazuh** instalado, com FIM em tempo real, coleta de PowerShell Script Block, logs do Sysmon/Defender/Task Scheduler já integrados
+**Windows:**
+- ✅ **Sysmon** configurado para detectar dump de credencial (`T1003`), DLL sideloading (`T1574.002`), persistência via registro, pipes de ferramentas de C2 e muito mais
+- ✅ **Agente Wazuh** com FIM em tempo real, coleta de PowerShell Script Block, logs do Sysmon/Defender/Task Scheduler já integrados
+
+**Linux:**
+- ✅ **auditd** configurado com regras mapeadas em MITRE (escalonamento de privilégio, reconhecimento, ferramentas suspeitas, persistência)
+- ✅ **Agente Wazuh** com FIM `whodata` (sabe quem alterou, não só o quê), coleta de auditd/auth.log, SCA contra CIS Benchmarks
+
 - ✅ Tudo já **enviando eventos para o Wazuh Manager** da empresa/cliente, sem etapas manuais adicionais
 
 ---
@@ -107,6 +114,8 @@ Os dois scripts seguem a mesma lógica:
 
 ## 🖧 Instalação em massa
 
+**Windows:**
+
 | Método | Quando usar |
 |---|---|
 | **PowerShell Remoting** (`Invoke-Command`) | Máquinas com WinRM habilitado |
@@ -117,23 +126,39 @@ Os dois scripts seguem a mesma lógica:
 Invoke-Command -ComputerName (Get-Content maquinas.txt) -FilePath .\deploy-s3-agent.ps1
 ```
 
+**Linux:**
+
+| Método | Quando usar |
+|---|---|
+| **Ansible / SSH em loop** | Qualquer ambiente com acesso SSH às máquinas |
+| **pdsh / clustershell** | Muitas máquinas, execução paralela |
+
+```bash
+for host in $(cat maquinas.txt); do
+  scp -r ../pacote-deploy-wazuh-sysmon "$host:/tmp/"
+  ssh "$host" "cd /tmp/pacote-deploy-wazuh-sysmon/scripts && sudo ./deploy-s3-agent-linux.sh"
+done
+```
+
 ---
 
 ## 🗂️ Configuração centralizada (recomendado)
 
-Em vez de depender só do script, crie um grupo de agentes no Wazuh Manager:
+Em vez de depender só do script, crie um grupo de agentes por sistema operacional no Wazuh Manager:
 
 ```bash
 sudo /var/ossec/bin/agent_groups -a -g windows-endpoints
+sudo /var/ossec/bin/agent_groups -a -g linux-endpoints
 ```
 
-Cole o conteúdo de `ossec-agent-windows.conf` (exceto a seção `<client>`) em:
+Cole o conteúdo de `ossec-agent-windows.conf` / `ossec-agent-linux.conf` (exceto a seção `<client>`) em:
 
 ```
 /var/ossec/etc/shared/windows-endpoints/agent.conf
+/var/ossec/etc/shared/linux-endpoints/agent.conf
 ```
 
-Assim, qualquer agente novo que entrar nesse grupo já recebe a configuração automaticamente — sem depender do script pra isso.
+Assim, qualquer agente novo que entrar em um desses grupos já recebe a configuração automaticamente — sem depender do script pra isso.
 
 ---
 
