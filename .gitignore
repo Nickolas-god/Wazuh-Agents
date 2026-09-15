@@ -1,0 +1,11 @@
+# Evita commitar versões locais já preenchidas com IP/credenciais reais
+*.local.conf
+*.local.ps1
+*local-config*
+
+# Arquivos de trabalho comuns em ambiente Windows
+Thumbs.db
+desktop.ini
+
+# Logs, caso alguém rode os scripts e gere log local
+*.log
